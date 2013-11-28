@@ -33,16 +33,10 @@ mk_pipe (ltype,path) = do
     is_eof <- hIsEOF fd
     if is_eof then threadDelay 1000000 else get_line ltype fd
 
--- Cycle through available pipes to create them
-mk_pipes :: [(String,String)] -> IO ()
-mk_pipes (pipe:pipes) = do
-  mk_pipe pipe
-  mk_pipes pipes
-mk_pipes [] = return ()
-
 -- Utility function to map "foo:/path" to a tuple ("foo", "/path")
-is_colon x = x == ':'
-get_logname path = (ltype, p) where (ltype, (_:p)) = break is_colon path
+get_logname path = (ltype, p) where is_colon x = x == ':'
+                                    (ltype, (_:p)) = break is_colon path
+
 
 -- Create a syslog handle and parse command line arguments and start nginx
 main :: IO ()
@@ -52,7 +46,7 @@ main = do
   updateGlobalLogger rootLoggerName (setLevel NOTICE)
   noticeM "nginxpipe" "starting up"
   args <- getArgs
-  mk_pipes $ map get_logname args
+  mapM_ mk_pipe $ map get_logname args
   noticeM "nginxpipe" "starting nginx"
   ph <- runCommand "nginx"
   exit_code <- waitForProcess ph
